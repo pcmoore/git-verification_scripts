@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Git source code verification script
+# https://github.com/pcmoore/git-verification_scripts
+# Paul Moore <paul@paul-moore.com>
+#
+
+# NOTE: comments starting with '#@ ' will become info text in pstg
+#@             Examines the coding style/format using ./tools/check-syntax
+
+# TODO: fix ./tools/check-syntax to return a useful error code, update this
+#       verifier script afterwards to return 0/good and 1/bad
+
+####
+# config
+
+# N/A
+
+####
+# functions
+
+function repo_top() {
+	local top=$(pwd)
+	while [[ ! -e $top/tools/check-syntax ]]; do
+		top=$(cd $top/..; pwd)
+		[[ $top == "/" ]] && return 1
+	done
+	echo "$top"
+}
+
+function git_uncommitted() {
+	local changes=$(git status --porcelain 2>/dev/null | wc -l)
+	[[ $changes -eq 0 ]] && return 1
+	return 0
+}
+
+####
+# main
+
+# find the repo top directory
+top=$(repo_top)
+[[ -z $top ]] && exit 1
+
+# check for uncommitted changes
+git_uncommitted && echo ">>> WARNING: you have uncommitted changes"
+
+# run the libseccomp check-syntax tool
+(cd $top; ./tools/check-syntax)
+
+exit 0
