@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Git source code verification script
+# https://github.com/pcmoore/git-verification_scripts
+# Paul Moore <paul@paul-moore.com>
+#
+
+# NOTE: comments starting with '#@ ' will become info text in pstg
+#@             Example verifier/template, displays commit info
+
+####
+# config
+
+# N/A
+
+####
+# functions
+
+function git_uncommitted() {
+	local changes=$(git status --porcelain 2>/dev/null | wc -l)
+	[[ $changes -eq 0 ]] && return 1
+	return 0
+}
+
+####
+# main
+
+# check for uncommitted changes
+git_uncommitted && echo ">>> warning: you have uncommitted changes"
+
+echo " SUBJ> $(git show --pretty=format:"%s" --no-patch)"
+git diff-tree --no-commit-id --stat HEAD
+
+exit 0

@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Git source code verification script
+# https://github.com/pcmoore/git-verification_scripts
+# Paul Moore <paul@paul-moore.com>
+#
+
+# NOTE: comments starting with '#@ ' will become info text in pstg
+#@             Runs the Linux Kernel's checkpatch.pl script
+
+####
+# config
+
+# N/A
+
+####
+# functions
+
+function kernel_top() {
+	local top=$(pwd)
+	while [[ ! -e $top/MAINTAINERS ]]; do
+		top=$(cd $top/..; pwd)
+		[[ $top == "/" ]] && return 1
+	done
+	echo "$top"
+}
+
+function git_uncommitted() {
+	local changes=$(git status --porcelain 2>/dev/null | wc -l)
+	[[ $changes -eq 0 ]] && return 1
+	return 0
+}
+
+####
+# main
+
+# find the kernel top directory
+top=$(kernel_top)
+[[ -z $top ]] && exit 1
+
+# check for uncommitted changes
+git_uncommitted && echo ">>> WARNING: you have uncommitted changes"
+
+# run checkpatch on the top commit
+git format-patch --stdout -1 | $top/scripts/checkpatch.pl -

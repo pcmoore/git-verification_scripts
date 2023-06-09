@@ -1,0 +1,125 @@
+#!/bin/bash
+
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Git source code verification script
+# https://github.com/pcmoore/git-verification_scripts
+# Paul Moore <paul@paul-moore.com>
+#
+
+# NOTE: comments starting with '#@ ' will become info text in pstg
+#@             Builds the modified Linux Kernel source directories
+
+# TODO: provide a config for the build overrides
+
+####
+# config
+
+# support "**" in pathnames
+shopt -s globstar
+
+# NOTE: makes use of the "pgit.buildjobs" git config variable; a value of 0
+#       indicates that the build jobs should match the cpu count; an empty or
+#       missing value indicates that the build should happen sequentially
+
+#
+# override build directories (first match wins)
+#   format: "<original_path>:<substitute_path>"
+#   multiple space delimited override entries supported
+#
+BUILD_OVERRIDE=""
+# lsm
+BUILD_OVERRIDE+="include/uapi/linux/capability.h:security/ "
+BUILD_OVERRIDE+="include/linux/lsm*:security/ "
+# selinux
+BUILD_OVERRIDE+="include/trace/events/avc.h:security/selinux/ "
+# audit
+BUILD_OVERRIDE+="include/linux/audit*:kernel/ "
+BUILD_OVERRIDE+="include/asm-generic/audit*:kernel/"
+# labeled networking
+BUILD_OVERRIDE+="include/net/cipso_ipv4.h:net/ipv4/ "
+BUILD_OVERRIDE+="include/net/calipso.h:net/ipv6/ "
+BUILD_OVERRIDE+="include/net/netlabel.h:net/netlabel/ "
+BUILD_OVERRIDE+="include/uapi/linux/netfilter/*SECMARK.h:security/ "
+
+####
+# functions
+
+function kernel_top() {
+	local top=$(pwd)
+	while [[ ! -e $top/MAINTAINERS ]]; do
+		top=$(cd $top/..; pwd)
+		[[ $top == "/" ]] && return 1
+	done
+	echo "$top"
+}
+
+function git_uncommitted() {
+	local changes=$(git status --porcelain 2>/dev/null | wc -l)
+	[[ $changes -eq 0 ]] && return 1
+	return 0
+}
+
+####
+# main
+
+# find the kernel top directory
+top=$(kernel_top)
+[[ -z $top ]] && exit 1
+
+# check for uncommitted changes
+git_uncommitted && echo ">>> WARNING: you have uncommitted changes"
+
+# determine the number of parallel build jobs to run
+jobs=$(git config --get pgit.buildjobs 2>/dev/null)
+if [[ -z $jobs ]]; then
+	jobs=1
+elif [[ $jobs -eq 0 ]]; then
+	jobs="$(cat /proc/cpuinfo | grep "^processor" | wc -l)"
+fi
+
+# check the override list first
+files_orig=$(git diff-tree --no-commit-id --name-only -r HEAD)
+for i in $files_orig; do
+	path_add=""
+	for j in $BUILD_OVERRIDE; do
+		if [[ $i == $(echo $j | cut -d: -f1) ]]; then
+			path_add="$(echo $j | cut -d: -f2) "
+			break
+		fi
+	done
+	if [[ -n $path_add ]]; then
+		dirs_orig+="$path_add "
+	else
+		dirs_orig+="$(dirname $(echo $i | cut -d: -f1)) "
+	fi
+done
+
+# generate a list of build directories
+dirs=""
+for i in $(echo $dirs_orig | sort -u); do
+	iter=$top/$i
+	# find the lowest directory we can build
+	while [[ ! -e $iter/Makefile ]]; do
+		iter=$(cd $iter/..; pwd)
+	done
+	# make it relative to the top of the kernel
+	dirs+="$(realpath --relative-to="$top" "$iter")/ "
+done
+
+# build the directories for each of the changed files
+for i in $(echo $dirs | sort -u); do
+	# we don't want to automatically do a full kernel build
+	if [[ $i == "./" ]]; then
+		echo ">>> skipping $i"
+		continue
+	fi
+
+	# build a kernel directory
+	echo ">>> building $i"
+	(cd $top; make -j$jobs $i)
+	rc=$?
+	[[ $rc != 0 ]] && exit $rc
+done
+
+exit 0
