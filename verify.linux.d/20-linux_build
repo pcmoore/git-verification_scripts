@@ -97,7 +97,7 @@ done
 
 # generate a list of build directories
 dirs=""
-for i in $(echo $dirs_orig | sort -u); do
+for i in $(echo $dirs_orig | sed 's/ /\n/' | sort -u); do
 	iter=$top/$i
 	# find the lowest directory we can build
 	while [[ ! -e $iter/Makefile ]]; do
@@ -108,7 +108,7 @@ for i in $(echo $dirs_orig | sort -u); do
 done
 
 # build the directories for each of the changed files
-for i in $(echo $dirs | sort -u); do
+for i in $(echo $dirs | sed 's/ /\n/' | sort -u); do
 	# we don't want to automatically do a full kernel build
 	if [[ $i == "./" ]]; then
 		echo ">>> skipping $i"
