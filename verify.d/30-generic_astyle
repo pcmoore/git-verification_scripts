@@ -27,6 +27,17 @@ PATHS_ALLOWED=" **/*.c"
 ####
 # functions
 
+function exit_error() {
+	echo ">>> error: $*"
+	exit 1
+}
+
+function dep_check() {
+	for i in $*; do
+		command -v $i > /dev/null || exit_error "$i command not found"
+	done
+}
+
 function git_uncommitted() {
 	local changes=$(git status --porcelain 2>/dev/null | wc -l)
 	[[ $changes -eq 0 ]] && return 1
@@ -56,6 +67,9 @@ function check_file() {
 
 ####
 # main
+
+# dependency checks
+dep_check git astyle
 
 # check for uncommitted changes
 git_uncommitted && echo ">>> WARNING: you have uncommitted changes"

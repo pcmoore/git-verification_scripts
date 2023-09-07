@@ -18,6 +18,17 @@
 ####
 # functions
 
+function exit_error() {
+	echo ">>> error: $*"
+	exit 1
+}
+
+function dep_check() {
+	for i in $*; do
+		command -v $i > /dev/null || exit_error "$i command not found"
+	done
+}
+
 function git_uncommitted() {
 	local changes=$(git status --porcelain 2>/dev/null | wc -l)
 	[[ $changes -eq 0 ]] && return 1
@@ -26,6 +37,9 @@ function git_uncommitted() {
 
 ####
 # main
+
+# dependency checks
+dep_check git
 
 # check for uncommitted changes
 git_uncommitted && echo ">>> warning: you have uncommitted changes"

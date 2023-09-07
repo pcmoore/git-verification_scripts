@@ -38,6 +38,17 @@ PATHS_ALLOWED=""
 ####
 # functions
 
+function exit_error() {
+	echo ">>> error: $*"
+	exit 1
+}
+
+function dep_check() {
+	for i in $*; do
+		command -v $i > /dev/null || exit_error "$i command not found"
+	done
+}
+
 function kernel_top() {
 	local top=$(pwd)
 	while [[ ! -e $top/MAINTAINERS ]]; do
@@ -72,7 +83,10 @@ function check_file() {
 
 # find the kernel top directory
 top=$(kernel_top)
-[[ -z $top ]] && exit 1
+[[ -z $top ]] && exit_error "not in a kernel directory"
+
+# dependency checks
+dep_check git clang-format
 
 # check for uncommitted changes
 git_uncommitted && echo ">>> WARNING: you have uncommitted changes"

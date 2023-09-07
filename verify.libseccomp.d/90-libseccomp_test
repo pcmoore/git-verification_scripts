@@ -18,6 +18,17 @@
 ####
 # functions
 
+function exit_error() {
+	echo ">>> error: $*"
+	exit 1
+}
+
+function dep_check() {
+	for i in $*; do
+		command -v $i > /dev/null || exit_error "$i command not found"
+	done
+}
+
 function repo_top() {
 	local top=$(pwd)
 	while [[ ! -e $top/tools/check-syntax ]]; do
@@ -38,7 +49,10 @@ function git_uncommitted() {
 
 # find the repo top directory
 top=$(repo_top)
-[[ -z $top ]] && exit 1
+[[ -z $top ]] && exit_error "not in a libseccomp directory"
+
+# dependency checks
+dep_check git make
 
 # check for uncommitted changes
 git_uncommitted && echo ">>> WARNING: you have uncommitted changes"
