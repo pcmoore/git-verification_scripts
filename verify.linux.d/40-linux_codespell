@@ -111,7 +111,7 @@ for i in $(git diff-tree --no-commit-id --name-only -r HEAD | sort -u); do
 	fi
 
 	# spellcheck
-	echo ">>> spelling mistakes in $i"
+	echo ">>> checking $i"
 	check_file "$top/$i"
 	rc_tmp=$?
 	[[ $rc -eq 0 ]] && rc=$rc_tmp
