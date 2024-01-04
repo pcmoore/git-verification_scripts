@@ -33,6 +33,7 @@ EXCLUDE_FILES=""
 #   format: space delimited file list
 #
 PATHS_ALLOWED=""
+PATHS_ALLOWED+=" security/selinux/include/*"
 #PATHS_ALLOWED=" include/* security/** net/netlabel/* kernel/audit*"
 
 ####
